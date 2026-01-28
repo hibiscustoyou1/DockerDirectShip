@@ -1,3 +1,4 @@
+// apps/server/prisma/schema.prisma
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
@@ -12,4 +13,20 @@ model Temp {
   id        Int      @id @default(autoincrement())
   value     String
   createdAt DateTime @default(now())
+}
+
+model Server {
+  id       Int    @id @default(autoincrement())
+  name     String
+  host     String
+  port     Int    @default(22)
+  username String @default("root")
+  authType String @default("password") // "password" | "privateKey"
+
+  // 敏感信息 (实际生产应使用字段级加密，这里简化处理，在Controller层做加解密)
+  password   String?
+  privateKey String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

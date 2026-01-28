@@ -1,3 +1,4 @@
+// apps/client/vite.config.ts
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
@@ -21,6 +22,12 @@ export default defineConfig(() => {
         '/api': {
           target: `http://localhost:${ API_PORT }`,
           changeOrigin: true,
+        },
+        // [New] 增加 WebSocket 代理配置
+        '/ws': {
+          target: `ws://localhost:${ API_PORT }`,
+          ws: true,
+          changeOrigin: true
         }
       }
     }

@@ -18,13 +18,19 @@
     "@prisma/client": "^5.22.0",
     "@repo/shared": "workspace:*",
     "@repo/tsconfig": "workspace:*",
+    "@types/ws": "^8.18.1",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "dockerode": "^4.0.9",
+    "express": "^5.1.0",
+    "ssh2": "^1.17.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/dockerode": "^3.3.47",
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
+    "@types/ssh2": "^1.15.5",
     "esbuild": "^0.27.0",
     "nodemon": "^3.1.11",
     "prisma": "^5.22.0",
