@@ -15,7 +15,8 @@
       <BaseCard
         v-for="server in servers"
         :key="server.id"
-        class="group relative overflow-hidden hover:-translate-y-1 duration-300"
+        class="group relative overflow-hidden hover:-translate-y-1 duration-300 cursor-pointer"
+        @click="goToDetail(server.id)"
       >
         <div class="absolute top-0 left-0 w-full h-1 transition-colors duration-500"
              :class="getStatusLineClass(server.id)"></div>
@@ -136,6 +137,8 @@
   import { getServers, createServer, deleteServer, testServerConnection } from '@/api/server'
   import type { Server, CreateServerDto } from '@repo/shared'
   import { useToast } from '@/composables/useToast'
+  import { useRouter } from 'vue-router';
+  const router = useRouter();
 
   // Components
   import BaseButton from '@/components/ui/BaseButton.vue'
@@ -265,6 +268,10 @@
     if (testResults[id]?.success === false) return '重试'
     return '测试连接'
   }
+
+  const goToDetail = (id: number) => {
+    router.push(`/servers/${id}`);
+  };
 
   onMounted(fetchList)
 </script>

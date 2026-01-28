@@ -91,3 +91,13 @@ export interface ProgressPayload {
 export interface LogPayload {
   message: string;
 }
+
+export interface RemoteContainer {
+  ID: string;
+  Names: string;
+  Image: string;
+  State: string;  // e.g. "running", "exited"
+  Status: string; // e.g. "Up 2 hours"
+  Ports: string;
+  CreatedAt: string;
+}

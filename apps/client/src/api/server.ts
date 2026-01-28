@@ -1,9 +1,13 @@
-// apps/client/src/api/server.ts
 import api from './index';
-import type { ApiResponse, Server, CreateServerDto, ServerTestResult } from '@repo/shared';
+import type { ApiResponse, Server, CreateServerDto, ServerTestResult, RemoteContainer } from '@repo/shared';
 
 export const getServers = () => {
   return api.get<ApiResponse<Server[]>>('/servers');
+};
+
+// [New]
+export const getServer = (id: number) => {
+  return api.get<ApiResponse<Server>>(`/servers/${id}`);
 };
 
 export const createServer = (data: CreateServerDto) => {
@@ -16,4 +20,9 @@ export const deleteServer = (id: number) => {
 
 export const testServerConnection = (id: number) => {
   return api.post<ApiResponse<ServerTestResult>>(`/servers/${id}/test`);
+};
+
+// [New] 获取远程容器
+export const getRemoteContainers = (serverId: number) => {
+  return api.get<ApiResponse<RemoteContainer[]>>(`/servers/${serverId}/containers`);
 };

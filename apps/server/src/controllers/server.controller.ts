@@ -27,6 +27,25 @@ export const listServers = async (_req: Request, res: Response<ApiResponse>) => 
   }
 };
 
+export const getServer = async (req: Request, res: Response<ApiResponse>) => {
+  try {
+    const { id } = req.params;
+    const server = await prisma.server.findUnique({ where: { id: Number(id) } });
+    if (!server) {
+      return res.status(404).json({ code: ApiCode.NOT_FOUND, msg: 'Server not found' });
+    }
+    // 脱敏
+    const safeServer = {
+      ...server,
+      password: server.password ? '******' : null,
+      privateKey: server.privateKey ? '******' : null,
+    };
+    res.json({ code: ApiCode.SUCCESS, data: safeServer });
+  } catch (error) {
+    res.status(500).json({ code: ApiCode.FAIL, msg: '获取服务器详情失败' });
+  }
+};
+
 // 创建服务器
 export const createServer = async (req: Request, res: Response<ApiResponse>) => {
   try {
