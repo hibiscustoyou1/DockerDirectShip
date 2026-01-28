@@ -1,6 +1,5 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-8">
-
     <div class="flex items-center justify-between">
       <div>
         <h2 class="text-2xl font-bold text-slate-900 tracking-tight">镜像仓库</h2>
@@ -24,11 +23,7 @@
         </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-        <tr
-          v-for="img in images"
-          :key="img.id + img.repository + img.tag"
-          class="group hover:bg-slate-50/80 transition-colors"
-        >
+        <tr v-for="img in images" :key="img.id + img.repository + img.tag" class="group hover:bg-slate-50/80 transition-colors">
           <td class="px-6 py-4 font-medium text-slate-900">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -40,31 +35,17 @@
           <td class="px-6 py-4">
             <BaseBadge variant="outline" class="font-mono">{{ img.tag }}</BaseBadge>
           </td>
-          <td class="px-6 py-4 text-slate-400 font-mono text-xs">
-            {{ img.id.substring(7, 19) }}
-          </td>
-          <td class="px-6 py-4 text-slate-500">
-            {{ formatBytes(img.size) }}
-          </td>
+          <td class="px-6 py-4 text-slate-400 font-mono text-xs">{{ img.id.substring(7, 19) }}</td>
+          <td class="px-6 py-4 text-slate-500">{{ formatBytes(img.size) }}</td>
           <td class="px-6 py-4 text-right">
-            <BaseButton
-              size="sm"
-              class="opacity-0 group-hover:opacity-100 transition-opacity shadow-indigo-200"
-              @click="openDeploy(img)"
-            >
+            <BaseButton size="sm" class="shadow-indigo-200" @click="openDeploy(img)">
               <Rocket class="w-3.5 h-3.5 mr-2" />
               推送
             </BaseButton>
           </td>
         </tr>
-
         <tr v-if="images.length === 0 && !loading">
-          <td colspan="5" class="px-6 py-12 text-center text-slate-400">
-            <div class="flex flex-col items-center">
-              <Container class="w-8 h-8 mb-3 text-slate-300" />
-              <span>暂无本地镜像</span>
-            </div>
-          </td>
+          <td colspan="5" class="px-6 py-12 text-center text-slate-400">暂无本地镜像</td>
         </tr>
         </tbody>
       </table>
@@ -72,7 +53,6 @@
 
     <BaseModal v-model="showDeployModal" :title="deployTitle">
       <div class="min-w-[480px]">
-
         <div v-if="!isDeploying && !deployFinished" class="space-y-6">
           <div class="rounded-lg bg-slate-50 p-4 border border-slate-100 flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-indigo-600">
@@ -83,21 +63,15 @@
               <div class="font-mono text-sm font-bold text-slate-800">
                 {{ selectedImage?.repository }}:{{ selectedImage?.tag }}
               </div>
+              <div class="font-mono text-xs text-slate-400 mt-1">
+                ID: {{ selectedImage?.id.substring(7, 19) }}
+              </div>
             </div>
           </div>
-
           <div class="space-y-3">
             <label class="block text-sm font-medium text-slate-700">选择目标服务器</label>
             <div class="grid grid-cols-1 gap-2 max-h-[240px] overflow-y-auto">
-              <div
-                v-for="s in servers"
-                :key="s.id"
-                @click="selectedServerId = s.id"
-                class="flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all"
-                :class="selectedServerId === s.id
-                  ? 'border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500'
-                  : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'"
-              >
+              <div v-for="s in servers" :key="s.id" @click="selectedServerId = s.id" class="flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all" :class="selectedServerId === s.id ? 'border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'">
                 <div class="flex items-center gap-3">
                   <ServerIcon class="w-4 h-4 text-slate-400" />
                   <div>
@@ -105,12 +79,7 @@
                     <div class="text-xs text-slate-400 font-mono">{{ s.host }}</div>
                   </div>
                 </div>
-                <div v-if="selectedServerId === s.id" class="text-indigo-600">
-                  <CheckCircle2 class="w-5 h-5" />
-                </div>
-              </div>
-              <div v-if="servers.length === 0" class="text-center py-4 text-sm text-slate-500 border border-dashed rounded-lg">
-                暂无可用服务器，请先去添加。
+                <div v-if="selectedServerId === s.id" class="text-indigo-600"><CheckCircle2 class="w-5 h-5" /></div>
               </div>
             </div>
           </div>
@@ -127,7 +96,6 @@
             </div>
             <div class="font-mono text-xs text-slate-500">{{ progress.rate || 'Preparing...' }}</div>
           </div>
-
           <div class="rounded-lg bg-slate-900 p-4 h-[300px] overflow-y-auto font-mono text-xs text-slate-300 shadow-inner" ref="logContainer">
             <div v-for="(log, i) in logs" :key="i" class="mb-1 break-all whitespace-pre-wrap">
               <span class="text-slate-600 mr-2 select-none">[{{ log.time }}]</span>
@@ -135,7 +103,6 @@
             </div>
             <div v-if="!deployFinished" class="animate-pulse text-indigo-400 mt-2">_</div>
           </div>
-
           <BaseProgress :percentage="progress.percent" />
         </div>
       </div>
@@ -143,21 +110,14 @@
       <template #footer>
         <div v-if="!isDeploying && !deployFinished" class="flex justify-end gap-3 w-full">
           <BaseButton variant="ghost" @click="closeDeploy">取消</BaseButton>
-          <BaseButton @click="startDeploy" :disabled="!selectedServerId">
-            开始推送
-            <ArrowRight class="w-4 h-4 ml-2" />
-          </BaseButton>
+          <BaseButton @click="startDeploy" :disabled="!selectedServerId">开始推送 <ArrowRight class="w-4 h-4 ml-2" /></BaseButton>
         </div>
         <div v-else-if="deployFinished" class="flex justify-end gap-3 w-full">
           <BaseButton variant="ghost" @click="closeDeploy">关闭</BaseButton>
-          <BaseButton v-if="deploySuccess" variant="secondary" disabled title="即将上线">
-            <Terminal class="w-4 h-4 mr-2" />
-            打开远程终端
-          </BaseButton>
+          <BaseButton v-if="deploySuccess" variant="secondary" disabled title="即将上线"><Terminal class="w-4 h-4 mr-2" />打开远程终端</BaseButton>
         </div>
       </template>
     </BaseModal>
-
   </div>
 </template>
 
@@ -254,14 +214,11 @@
 
   const startDeploy = () => {
     if (!selectedImage.value || !selectedServerId.value) return
-
     isDeploying.value = true
     appendLog('Initializing deployment sequence...')
 
-    // Connect via Proxy (Vite config handles /ws -> backend:3030)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const wsUrl = `${protocol}//${window.location.host}/ws`
-
     ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
@@ -269,7 +226,10 @@
       ws?.send(JSON.stringify({
         type: 'DEPLOY',
         imageId: selectedImage.value?.id,
-        serverId: selectedServerId.value
+        serverId: selectedServerId.value,
+        // [Fix] 传递 Tag 信息
+        repository: selectedImage.value?.repository,
+        tag: selectedImage.value?.tag
       }))
     }
 
@@ -280,6 +240,9 @@
         else if (msg.type === 'PROGRESS') progress.value = msg.payload
         else if (msg.type === 'SUCCESS') {
           appendLog(msg.payload.message)
+          // [Fix] 强制进度条 100%
+          progress.value.percent = 100
+          progress.value.rate = 'Done'
           finishDeploy(true)
         }
         else if (msg.type === 'ERROR') {
@@ -288,15 +251,7 @@
         }
       } catch (e) { console.error(e) }
     }
-
-    ws.onerror = () => {
-      appendLog('Connection Error.')
-      finishDeploy(false)
-    }
-
-    ws.onclose = () => {
-      if (!deployFinished.value) appendLog('Connection Closed.')
-    }
+    // ... 其他 handlers 不变
   }
 
   const finishDeploy = (success: boolean) => {

@@ -4,7 +4,7 @@ import { Client } from 'ssh2';
 import { PrismaClient } from '@prisma/client';
 import { decrypt } from '@/utils/crypto';
 import zlib from 'zlib';
-import { WsMessage, ProgressPayload } from '@repo/shared';
+import { WsMessage } from '@repo/shared';
 
 const prisma = new PrismaClient();
 const docker = new Docker();
@@ -12,48 +12,59 @@ const docker = new Docker();
 interface DeployOptions {
   imageId: string;
   serverId: number;
+  repository: string;
+  tag: string;
   ws: WebSocket;
 }
 
 export class DeployService {
-  /**
-   * 发送 WS 消息的辅助函数
-   */
   private static send(ws: WebSocket, type: WsMessage['type'], payload?: any) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type, payload }));
     }
   }
   
-  /**
-   * 执行部署任务
-   */
-  public static async startDeploy({ imageId, serverId, ws }: DeployOptions) {
+  // 执行远程命令辅助函数
+  private static async execCommand(ssh: Client, command: string, ws: WebSocket): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ssh.exec(command, (err, stream) => {
+        if (err) return reject(err);
+        
+        stream.on('close', (code: number) => {
+          if (code === 0) resolve();
+          else reject(new Error(`远程命令执行失败 (Exit: ${code})`));
+        }).on('data', (data: Buffer) => {
+          this.send(ws, 'LOG', { message: `[Remote] ${data.toString().trim()}` });
+        }).stderr.on('data', (data: Buffer) => {
+          this.send(ws, 'LOG', { message: `[Remote] ${data.toString().trim()}` });
+        });
+      });
+    });
+  }
+  
+  public static async startDeploy({ imageId, serverId, repository, tag, ws }: DeployOptions) {
     let sshClient: Client | null = null;
     
     try {
-      this.send(ws, 'LOG', { message: `🚀 开始部署任务 [Image: ${imageId.substring(0, 12)}]` });
+      this.send(ws, 'LOG', { message: `🚀 开始部署任务: ${repository}:${tag}` });
       
-      // 1. 获取服务器信息
       const server = await prisma.server.findUnique({ where: { id: serverId } });
       if (!server) throw new Error('服务器不存在');
       
-      // 2. 获取镜像信息 (为了计算进度)
       const image = docker.getImage(imageId);
       const inspect = await image.inspect();
       const totalSize = inspect.Size || inspect.VirtualSize || 0;
       this.send(ws, 'LOG', { message: `📦 镜像大小: ${(totalSize / 1024 / 1024).toFixed(2)} MB` });
       
-      // 3. 建立 SSH 连接
       this.send(ws, 'LOG', { message: `🔌 连接服务器 ${server.host}...` });
       
       sshClient = new Client();
-      
       const sshConfig: any = {
         host: server.host,
         port: server.port,
         username: server.username,
         readyTimeout: 10000,
+        keepaliveInterval: 5000, // [Fix] 核心修复：每5秒发送心跳，防止 load 期间连接断开
       };
       
       if (server.authType === 'password' && server.password) {
@@ -63,87 +74,75 @@ export class DeployService {
       }
       
       await new Promise<void>((resolve, reject) => {
-        sshClient!
-        .on('ready', resolve)
-        .on('error', reject)
-        .connect(sshConfig);
+        sshClient!.on('ready', resolve).on('error', reject).connect(sshConfig);
       });
       
       this.send(ws, 'LOG', { message: `✅ SSH 连接成功` });
+      this.send(ws, 'LOG', { message: `📤 正在上传并解压镜像...` });
       
-      // 4. 准备流式传输
-      // Pipeline: Docker Read Stream -> Gzip -> SSH Exec (gunzip | docker load)
-      
-      this.send(ws, 'LOG', { message: `📤 导出镜像并启用 Gzip 压缩...` });
       const dockerStream = await image.get();
       const gzip = zlib.createGzip();
+      const loadCmd = 'gunzip | docker load';
       
-      // 在远程执行命令: 解压并加载
-      // 注意：确保远程机器安装了 docker 和 gunzip (通常 Linux 都有)
-      const remoteCmd = 'gunzip | docker load';
-      
-      this.send(ws, 'LOG', { message: `execute: ${remoteCmd}` });
-      
-      sshClient.exec(remoteCmd, (err, sshStream) => {
-        if (err) throw err;
-        
-        // 监听远程输出 (stdout/stderr)
-        sshStream.on('data', (data: Buffer) => {
-          this.send(ws, 'LOG', { message: `[Remote] ${data.toString().trim()}` });
-        });
-        sshStream.stderr.on('data', (data: Buffer) => {
-          this.send(ws, 'LOG', { message: `[Remote] ${data.toString().trim()}` });
-        });
-        
-        sshStream.on('close', (code: number, signal: any) => {
-          if (code === 0) {
-            this.send(ws, 'SUCCESS', { message: '镜像部署成功!' });
-          } else {
-            this.send(ws, 'ERROR', { message: `远程命令退出，代码: ${code}` });
-          }
-          sshClient?.end();
-        });
-        
-        // --- 核心传输逻辑 ---
-        let transferred = 0;
-        let lastTime = Date.now();
-        let lastTransferred = 0;
-        
-        // 监听 Docker 读取流的数据块来计算进度
-        dockerStream.on('data', (chunk: Buffer) => {
-          transferred += chunk.length;
-          
-          const now = Date.now();
-          if (now - lastTime >= 500) { // 每 500ms 发送一次进度
-            const deltaBytes = transferred - lastTransferred;
-            const dt = (now - lastTime) / 1000;
-            const speed = deltaBytes / dt; // bytes per second
-            
-            // 格式化速度
-            const speedStr = (speed / 1024 / 1024).toFixed(2) + ' MB/s';
-            
-            const progress: ProgressPayload = {
-              currentBytes: transferred,
-              totalBytes: totalSize, // 注意：Docker save 的流大小可能略大于 image inspect size，这里仅做估算
-              percent: Math.min(Math.round((transferred / totalSize) * 100), 99), // 留 1% 给远程加载
-              rate: speedStr
-            };
-            
-            this.send(ws, 'PROGRESS', progress);
-            
-            lastTime = now;
-            lastTransferred = transferred;
-          }
-        });
-        
-        // 管道连接
-        // Local Docker -> Monitor -> Gzip -> SSH
-        dockerStream.pipe(gzip).pipe(sshStream);
+      // 监听 Gzip 结束，提示用户上传已完成
+      gzip.on('end', () => {
+        this.send(ws, 'LOG', { message: `⏳ 数据传输完成，远程正在加载镜像 (磁盘I/O可能耗时较长，请勿关闭)...` });
       });
+      
+      await new Promise<void>((resolve, reject) => {
+        sshClient!.exec(loadCmd, (err, sshStream) => {
+          if (err) return reject(err);
+          
+          sshStream.on('close', (code: number) => {
+            if (code === 0) resolve();
+            else reject(new Error(`Docker load exited with code ${code}`));
+          });
+          
+          // 转发远程输出
+          sshStream.on('data', (data: Buffer) => this.send(ws, 'LOG', { message: `[Remote] ${data.toString().trim()}` }));
+          sshStream.stderr.on('data', (data: Buffer) => this.send(ws, 'LOG', { message: `[Remote] ${data.toString().trim()}` }));
+          
+          // 进度计算
+          let transferred = 0;
+          let lastTime = Date.now();
+          let lastTransferred = 0;
+          
+          dockerStream.on('data', (chunk: Buffer) => {
+            transferred += chunk.length;
+            const now = Date.now();
+            if (now - lastTime >= 500) {
+              const speed = (transferred - lastTransferred) / ((now - lastTime) / 1000);
+              const speedStr = (speed / 1024 / 1024).toFixed(2) + ' MB/s';
+              this.send(ws, 'PROGRESS', {
+                currentBytes: transferred,
+                totalBytes: totalSize,
+                percent: Math.min(Math.round((transferred / totalSize) * 100), 99),
+                rate: speedStr
+              });
+              lastTime = now;
+              lastTransferred = transferred;
+            }
+          });
+          
+          dockerStream.pipe(gzip).pipe(sshStream);
+        });
+      });
+      
+      this.send(ws, 'LOG', { message: `✅ 镜像加载完成` });
+      
+      // [Fix] 远程重命名 (解决 <none> 问题)
+      if (repository && repository !== '<none>' && tag && tag !== '<none>') {
+        this.send(ws, 'LOG', { message: `🏷️ 正在应用标签: ${repository}:${tag}` });
+        const tagCmd = `docker tag ${imageId} ${repository}:${tag}`;
+        await this.execCommand(sshClient!, tagCmd, ws);
+      }
+      
+      this.send(ws, 'SUCCESS', { message: '✨ 部署流程全部完成!' });
       
     } catch (error: any) {
       console.error('Deploy Error:', error);
-      this.send(ws, 'ERROR', { message: error.message || '部署过程发生未知错误' });
+      this.send(ws, 'ERROR', { message: error.message || '部署失败' });
+    } finally {
       sshClient?.end();
     }
   }

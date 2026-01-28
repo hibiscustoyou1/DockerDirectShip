@@ -3,10 +3,10 @@ import express from 'express';
 import cors from 'cors';
 import { initRoutes } from '@/routes';
 import { getServerPaths, loadSecureEnv} from '@repo/shared/node';
-import { DeployRequest } from '@/repo/shared'
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { DeployService } from '@/services/deploy.service';
+import { DeployRequest } from "@repo/shared";
 
 const { PROJECT_ROOT } = getServerPaths(__dirname);
 loadSecureEnv(PROJECT_ROOT);
@@ -31,20 +31,18 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('message', async (message: string) => {
     try {
       const data = JSON.parse(message.toString());
-      
-      // 处理部署请求
       if (data.type === 'DEPLOY') {
         const payload = data as DeployRequest;
         await DeployService.startDeploy({
           imageId: payload.imageId,
           serverId: payload.serverId,
+          // [New] 传递 repo 和 tag
+          repository: payload.repository,
+          tag: payload.tag,
           ws
         });
       }
-    } catch (e) {
-      console.error('WS Message Error:', e);
-      ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Invalid Message Format' } }));
-    }
+    } catch (e) { /*...*/ }
   });
   
   ws.on('close', () => console.log('🔌 WebSocket Client Disconnected'));

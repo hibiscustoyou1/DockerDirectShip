@@ -69,8 +69,11 @@ export type WsMessageType = 'DEPLOY_START' | 'LOG' | 'PROGRESS' | 'ERROR' | 'SUC
 
 export interface DeployRequest {
   type: 'DEPLOY';
-  imageId: string;   // Image ID
-  serverId: number;  // Server Database ID
+  imageId: string;
+  serverId: number;
+  // [New] 用于远程重命名
+  repository: string;
+  tag: string;
 }
 
 export interface WsMessage {
@@ -82,7 +85,7 @@ export interface ProgressPayload {
   currentBytes: number;
   totalBytes: number;
   percent: number;
-  rate?: string; // e.g. "2.5 MB/s"
+  rate?: string;
 }
 
 export interface LogPayload {
