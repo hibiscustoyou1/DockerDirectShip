@@ -1,8 +1,52 @@
-/* client/src/style.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-.no-outline:focus {
-  outline: none;
+:root {
+  /* 基础色板: Zinc (中性灰) + Indigo (品牌色) */
+  --bg-page: #f8fafc;       /* Slate-50 */
+  --bg-card: #ffffff;
+
+  --text-main: #0f172a;     /* Slate-900 */
+  --text-muted: #64748b;    /* Slate-500 */
+
+  --border-color: #e2e8f0;  /* Slate-200 */
+
+  --primary: #4f46e5;       /* Indigo-600 */
+  --primary-hover: #4338ca; /* Indigo-700 */
+  --primary-fg: #ffffff;
+
+  --danger: #ef4444;        /* Red-500 */
+  --success: #10b981;       /* Emerald-500 */
+
+  --radius: 12px;           /* 统一圆角 */
+}
+
+/* 简单的过渡动画类 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 列表动画 */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.3s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
