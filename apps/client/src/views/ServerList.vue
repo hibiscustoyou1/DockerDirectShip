@@ -32,7 +32,7 @@
             </div>
           </div>
 
-          <button @click="confirmDelete(server)" class="text-slate-300 hover:text-red-500 transition-colors p-1">
+          <button @click.stop="confirmDelete(server)" class="text-slate-300 hover:text-red-500 transition-colors p-1">
             <Trash2 class="w-4 h-4" />
           </button>
         </div>
@@ -46,7 +46,7 @@
             size="sm"
             variant="ghost"
             :loading="testingId === server.id"
-            @click="testConn(server.id)"
+            @click.stop="testConn(server.id)"
             :class="getTestBtnClass(server.id)"
           >
             {{ getTestBtnText(server.id) }}
